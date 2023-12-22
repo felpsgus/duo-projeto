@@ -162,9 +162,13 @@ const ModalCadastrar: React.FC<ModalCadastrarProps> = props => {
 		users?.push(formData)
 		await localforage.setItem('users', users)
 
-		if (onClose) onClose()
-		handleClose()
-		setSuccess(false)
+		setSuccess(true)
+		setLoading(false)
+		setTimeout(() => {
+			setSuccess(false)
+			if (onClose) onClose()
+			handleClose()
+		}, 3000)
 	}
 
 	const handleOpen = async () => setOpen(true)

@@ -170,9 +170,13 @@ const ModalPerfil: React.FC<ModalPerfilProps> = props => {
 		await localforage.setItem('users', users)
 		await localforage.setItem('userLogged', formData)
 
-		setSuccess(false)
-		if (onClose) onClose()
-		handleClose()
+		setSuccess(true)
+		setLoading(false)
+		setTimeout(() => {
+			setSuccess(false)
+			if (onClose) onClose()
+			handleClose()
+		}, 3000)
 	}
 
 	const handleOpen = async () => {

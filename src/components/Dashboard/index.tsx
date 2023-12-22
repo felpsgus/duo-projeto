@@ -105,7 +105,7 @@ export default function Dashboard() {
 					>
 						<Alert severity="success" sx={{ mb: 2 }}>
 							<AlertTitle>
-								Empresa deletada com sucesso!
+								Usuário deletado com sucesso!
 							</AlertTitle>
 						</Alert>
 					</StyledFade>
