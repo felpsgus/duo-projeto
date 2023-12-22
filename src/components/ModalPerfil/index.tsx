@@ -158,7 +158,7 @@ const ModalPerfil: React.FC<ModalPerfilProps> = props => {
 			setLoading(false)
 			return
 		}
-		else if (formData.password !== '' && formData.password_confirmation === '') {
+		else if (formData.password === '' && formData.password_confirmation === '') {
 			formData.password_confirmation = formData.password = isLogged.password
 		}
 
@@ -249,7 +249,7 @@ const ModalPerfil: React.FC<ModalPerfilProps> = props => {
 						>
 							<Alert severity="success" sx={{ mb: 2 }}>
 								<AlertTitle>
-									Empresa salva com sucesso!
+									Usuário salvo com sucesso!
 								</AlertTitle>
 							</Alert>
 						</StyledFade>

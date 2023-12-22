@@ -230,7 +230,7 @@ const ModalCadastrar: React.FC<ModalCadastrarProps> = props => {
 						>
 							<Alert severity="success" sx={{ mb: 2 }}>
 								<AlertTitle>
-									Empresa salva com sucesso!
+									Usuário salvo com sucesso!
 								</AlertTitle>
 							</Alert>
 						</StyledFade>
