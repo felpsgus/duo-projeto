@@ -176,7 +176,7 @@ const ModalPerfil: React.FC<ModalPerfilProps> = props => {
 			setSuccess(false)
 			if (onClose) onClose()
 			handleClose()
-		}, 3000)
+		}, 1000)
 	}
 
 	const handleOpen = async () => {

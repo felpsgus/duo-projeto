@@ -70,7 +70,7 @@ export default function Dashboard() {
 		fetchData()
 		setTimeout(() => {
 			setSuccess(false)
-		}, 3000)
+		}, 1000)
 	}, [fetchData, setSuccess])
 
 	const handleFilter = (event: React.ChangeEvent<HTMLInputElement>) => {

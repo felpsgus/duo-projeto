@@ -1,6 +1,8 @@
 
 # Teste Front-end React
 
+Veja a aplicação rodando clicando [aqui](https://duo-projeto.vercel.app/)
+
 ## Pré-requisitos
 
 Antes de começar, certifique-se de ter as seguintes ferramentas instaladas em sua máquina:

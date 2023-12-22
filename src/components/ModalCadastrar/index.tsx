@@ -168,7 +168,7 @@ const ModalCadastrar: React.FC<ModalCadastrarProps> = props => {
 			setSuccess(false)
 			if (onClose) onClose()
 			handleClose()
-		}, 3000)
+		}, 1000)
 	}
 
 	const handleOpen = async () => setOpen(true)
