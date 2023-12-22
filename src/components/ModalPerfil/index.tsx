@@ -12,10 +12,8 @@ import {
 	styled
 } from '@mui/material'
 import * as React from 'react'
-import axios from 'axios'
 import localforage from 'localforage'
 import { useState } from 'react'
-import CloudUploadIcon from '@mui/icons-material/CloudUpload'
 
 const style = {
 	position: 'absolute',
@@ -32,35 +30,19 @@ const style = {
 	alignItems: 'center'
 }
 
-const VisuallyHiddenInput = styled('input')({
-	clip: 'rect(0 0 0 0)',
-	clipPath: 'inset(50%)',
-	height: 1,
-	overflow: 'hidden',
-	position: 'absolute',
-	bottom: 0,
-	left: 0,
-	whiteSpace: 'nowrap',
-	width: 1
-})
-
 interface Data {
-	id_empresa?: number
-	nome: string
-	cnpj: string
+	id?: number
+	user: string
+	name: string
 	email: string
-	telefone: string
-	logo?: File | string
+	phone: string
+	password?: string
+	password_confirmation?: string
 }
 
-interface Token {
-	access_token: string
-}
 
-interface ModalAtualizarProps {
+interface ModalPerfilProps {
 	onClose?: () => void
-	data?: Data
-	icon?: React.ReactNode
 	button?: string
 }
 
@@ -68,12 +50,12 @@ const StyledFade = styled(Fade)({
 	display: 'flex'
 })
 
-const ModalAtualizar: React.FC<ModalAtualizarProps> = props => {
-	const { onClose, data } = props
+const ModalPerfil: React.FC<ModalPerfilProps> = props => {
+	const { onClose } = props
 
 	const TYPES: { [key: string]: string } = {
 		cnpj: '99.999.999/9999-99',
-		telefone: '(99) 99999-9999'
+		phone: '(99) 99999-9999'
 	}
 
 	const [loading, setLoading] = useState(false)
@@ -82,25 +64,20 @@ const ModalAtualizar: React.FC<ModalAtualizarProps> = props => {
 	const [success, setSuccess] = useState(false)
 
 	const [formData, setFormData] = useState<Data>({
-		nome: '',
-		cnpj: '',
+		user: '',
+		name: '',
 		email: '',
-		telefone: '',
-		logo: undefined
+		phone: '',
+		password: '',
+		password_confirmation: ''
 	})
-	const [image, setImage] = useState<File | null>(null)
-	const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-		if (event.target.files && event.target.files[0]) {
-			setImage(event.target.files[0])
-		}
-	}
 
 	function applyMask(value: string, name: string) {
 		if (TYPES[name] === undefined) return value
+
 		value = (value as string).replace(/[^0-9]/g, '')
 		const mask = TYPES[name]
 		let result = ''
-
 		let inc = 0
 		Array.from(value).forEach((letter, index) => {
 			while (
@@ -132,19 +109,18 @@ const ModalAtualizar: React.FC<ModalAtualizarProps> = props => {
 
 	const validateData = (): boolean => {
 		let errorsAux: string[] = []
-		if (formData.nome === '') errorsAux.push('O campo nome é obrigatório')
 
-		if (formData.cnpj === '') errorsAux.push('O campo CNPJ é obrigatório')
-		else if (formData.cnpj.length !== 18)
-			errorsAux.push('O campo CNPJ deve ter 18 caracteres')
+		if (formData.user === '')
+			errorsAux.push('O campo usuário é obrigatório')
+
+		if (formData.name === '') errorsAux.push('O campo name é obrigatório')
 
 		if (formData.email === '')
 			errorsAux.push('O campo e-mail é obrigatório')
 
-		if (formData.telefone === '')
-			errorsAux.push('O campo telefone é obrigatório')
-		else if (formData.telefone.length !== 15)
-			errorsAux.push('O campo telefone deve ter 15 caracteres')
+		if (formData.phone === '') errorsAux.push('O campo phone é obrigatório')
+		else if (formData.phone.length !== 15)
+			errorsAux.push('O campo phone deve ter 15 caracteres')
 
 		setErrors(errorsAux)
 		return errorsAux.length === 0
@@ -163,68 +139,50 @@ const ModalAtualizar: React.FC<ModalAtualizarProps> = props => {
 			return
 		}
 
-		const value: Token | null = await localforage.getItem('token')
-
-		if (!value || !value.access_token) {
+		var isLogged = await localforage.getItem('userLogged') as Data
+		if (!isLogged) {
 			window.location.href = '/login'
 			return
 		}
 
-		const formDataFinal = new FormData()
-		formDataFinal.append('nome', formData.nome)
-		formDataFinal.append('cnpj', formData.cnpj)
-		formDataFinal.append('email', formData.email)
-		formDataFinal.append('telefone', formData.telefone)
-		if (image) formDataFinal.append('logo', image)
+		const users = await localforage.getItem<Data[]>('users') || []
 
-		await axios
-			.post(`http://localhost:8000/api/v1/empresas/${data?.id_empresa}`, formDataFinal, {
-				headers: {
-					'Content-Type': 'multipart/form-data',
-					Accept: 'application/json',
-					Authorization: `Bearer ${value.access_token}`
-				}
-			})
-			.then(response => {
-				setLoading(false)
-				setSuccess(true)
-			})
-			.catch(error => {
-				setLoading(false)
-				const { message, errors } = error.response.data
+		if (users?.find(user => user.user === formData.user && user.id !== isLogged.id)) {
+			setErrors(['Nome de usuário já cadastrado'])
+			setLoading(false)
+			return
+		}
 
-				if (errors === undefined) {
-					setErrors([message])
-					return
-				}
-				const erroList = []
-				for (const campo in errors) {
-					if (errors.hasOwnProperty(campo)) {
-						erroList.push(errors[campo][0])
-					}
-				}
-				setErrors(erroList)
-			})
+		if (formData.password !== formData.password_confirmation) {
+			setErrors(['Senhas não conferem'])
+			setLoading(false)
+			return
+		}
+		else if (formData.password !== '' && formData.password_confirmation === '') {
+			formData.password_confirmation = formData.password = isLogged.password
+		}
 
-		setTimeout(() => {
-			setSuccess(false)
-			setFormData({
-				nome: '',
-				cnpj: '',
-				email: '',
-				telefone: ''
-			})
-			if (onClose) {
-				onClose()
-			}
-			handleClose()
-		}, 3000)
+		if(isLogged.id !== undefined) 
+			users[isLogged.id - 1] = formData as Data
+		else
+			users.push(formData as Data)
+
+		await localforage.setItem('users', users)
+		await localforage.setItem('userLogged', formData)
+
+		setSuccess(false)
+		if (onClose) onClose()
+		handleClose()
 	}
 
 	const handleOpen = async () => {
 		setOpen(true)
-		if (data)
-			setFormData(data as Data)
+		var data = await localforage.getItem<Data>('userLogged') || {} as Data
+		if (data){
+			data.password = ''
+			data.password_confirmation = ''
+			setFormData(data)	
+		} 
 	}
 
 	const handleClose = () => {
@@ -233,11 +191,14 @@ const ModalAtualizar: React.FC<ModalAtualizarProps> = props => {
 		setSuccess(false)
 		setLoading(false)
 		setFormData({
-			nome: '',
-			cnpj: '',
+			user: '',
+			name: '',
 			email: '',
-			telefone: ''
+			phone: '',
+			password: '',
+			password_confirmation: ''
 		})
+		if (onClose) onClose()
 	}
 
 	return (
@@ -245,7 +206,6 @@ const ModalAtualizar: React.FC<ModalAtualizarProps> = props => {
 			<Button
 				variant="outlined"
 				onClick={handleOpen}
-				startIcon={props.icon}
 			>
 				{props.button}
 			</Button>
@@ -304,30 +264,31 @@ const ModalAtualizar: React.FC<ModalAtualizarProps> = props => {
 						<Grid container spacing={2}>
 							<Grid item xs={6}>
 								<TextField
-									autoComplete="given-name"
-									name="nome"
+									autoComplete="given-user"
+									name="user"
 									required
 									fullWidth
-									id="nome"
-									label="Nome"
-									value={formData.nome}
+									id="user"
+									label="Usuário"
+									value={formData.user}
 									onChange={handleChange}
 									autoFocus
 								/>
 							</Grid>
-							<Grid item xs={6}>
+							<Grid item xs={12}>
 								<TextField
+									autoComplete="given-name"
+									name="name"
 									required
 									fullWidth
-									name="cnpj"
-									label="CNPJ"
-									type="cnpj"
-									id="cnpj"
-									value={formData.cnpj}
-									onChange={event => handleChange(event, 18)}
+									id="name"
+									label="Nome"
+									value={formData.name}
+									onChange={handleChange}
+									autoFocus
 								/>
 							</Grid>
-							<Grid item xs={6}>
+							<Grid item xs={12}>
 								<TextField
 									required
 									fullWidth
@@ -343,32 +304,39 @@ const ModalAtualizar: React.FC<ModalAtualizarProps> = props => {
 								<TextField
 									required
 									fullWidth
-									name="telefone"
+									name="phone"
 									label="Telefone"
-									type="telefone"
-									id="telefone"
-									value={formData.telefone}
+									type="phone"
+									id="phone"
+									value={formData.phone}
 									onChange={event => handleChange(event, 15)}
 								/>
 							</Grid>
-							<Grid
-								item
-								xs={12}
-							>
-								<Button
-									component="label"
-									variant="contained"
-									startIcon={<CloudUploadIcon />}
-								>
-									Upload Logo
-									<VisuallyHiddenInput
-										type="file"
-										accept="image/*"
-										name="logo"
-										id="logo"
-										onChange={handleImageChange}
-									/>
-								</Button>
+							<Grid item xs={6}>
+							</Grid>
+							<Grid item xs={6}>
+								<TextField
+									required
+									fullWidth
+									name="password"
+									label="Nova senha"
+									type="password"
+									id="password"
+									value={formData.password}
+									onChange={handleChange}
+								/>
+							</Grid>
+							<Grid item xs={6}>
+								<TextField
+									required
+									fullWidth
+									name="password_confirmation"
+									label="Confirme a senha"
+									type="password"
+									id="password_confirmation"
+									value={formData.password_confirmation}
+									onChange={handleChange}
+								/>
 							</Grid>
 						</Grid>
 						<Box sx={{ display: 'flex', gap: 2 }}>
@@ -399,4 +367,4 @@ const ModalAtualizar: React.FC<ModalAtualizarProps> = props => {
 	)
 }
 
-export default ModalAtualizar
+export default ModalPerfil

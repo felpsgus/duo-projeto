@@ -1,53 +1,41 @@
-import axios from "axios";
-import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
-import { Button, ButtonProps } from "@mui/material";
-import * as React from "react";
-import localforage from "localforage";
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline'
+import { Button, ButtonProps } from '@mui/material'
+import * as React from 'react'
+import localforage from 'localforage'
 
 interface DeleteButtonProps extends ButtonProps {
-  row: {
-    id_empresa: number;
-  };
-  func: () => void;
+	row: {
+		id: number
+	}
+	func: () => void
 }
 
-interface Token {
-  access_token: string;
+interface FormData {
+	id?: number
 }
 
-const DeleteButton: React.FC<DeleteButtonProps> = (props) => {
-  const { row, func } = props;
-  const handleDeletion = async (id: number) => {
-    const value: Token | null = await localforage.getItem("token");
+const DeleteButton: React.FC<DeleteButtonProps> = props => {
+	const { row, func } = props
+	const handleDeletion = async (id: number) => {
 
-    if (!value || !value.access_token) {
-      window.location.href = "/login";
-      return;
-    }
-    const response = await axios
-      .delete("http://localhost:8000/api/v1/empresas/" + id, {
-        headers: {
-          Accept: "application/json",
-          Authorization: `Bearer ${value.access_token}`,
-        },
-      })
-      .then((response) => {
-        func();
-      });
+		const users = (await localforage.getItem<FormData[]>('users')) || []
 
-    return response;
-  };
+		const updatedUsers = users.filter(u => u.id !== id)
+		await localforage.setItem('users', updatedUsers)
 
-  return (
-    <Button
-      startIcon={<DeleteOutlineIcon />}
-      variant="outlined"
-      color="error"
-      onClick={() => handleDeletion(row.id_empresa)}
-    >
-      Excluir
-    </Button>
-  );
-};
+		func()
+	}
 
-export default DeleteButton;
+	return (
+		<Button
+			startIcon={<DeleteOutlineIcon />}
+			variant="outlined"
+			color="error"
+			onClick={() => handleDeletion(row.id)}
+		>
+			Excluir
+		</Button>
+	)
+}
+
+export default DeleteButton

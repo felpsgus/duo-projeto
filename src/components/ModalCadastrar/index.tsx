@@ -12,10 +12,8 @@ import {
 	styled
 } from '@mui/material'
 import * as React from 'react'
-import axios from 'axios'
 import localforage from 'localforage'
 import { useState } from 'react'
-import CloudUploadIcon from '@mui/icons-material/CloudUpload'
 
 const style = {
 	position: 'absolute',
@@ -32,34 +30,17 @@ const style = {
 	alignItems: 'center'
 }
 
-const VisuallyHiddenInput = styled('input')({
-	clip: 'rect(0 0 0 0)',
-	clipPath: 'inset(50%)',
-	height: 1,
-	overflow: 'hidden',
-	position: 'absolute',
-	bottom: 0,
-	left: 0,
-	whiteSpace: 'nowrap',
-	width: 1
-})
-
 interface Data {
-	id_empresa?: number
-	nome: string
-	cnpj: string
+	id?: number
+	user: string
+	name: string
 	email: string
-	telefone: string
-	logo?: File | string
-}
-
-interface Token {
-	access_token: string
+	phone: string
+	password: string
 }
 
 interface ModalCadastrarProps {
 	onClose?: () => void
-	icon?: React.ReactNode
 	button?: string
 }
 
@@ -71,28 +52,21 @@ const ModalCadastrar: React.FC<ModalCadastrarProps> = props => {
 	const { onClose } = props
 
 	const TYPES: { [key: string]: string } = {
-		cnpj: '99.999.999/9999-99',
-		telefone: '(99) 99999-9999'
+		phone: '(99) 99999-9999'
 	}
 
 	const [loading, setLoading] = useState(false)
 	const [open, setOpen] = useState(false)
 	const [errors, setErrors] = useState<string[]>([])
 	const [success, setSuccess] = useState(false)
-
 	const [formData, setFormData] = useState<Data>({
-		nome: '',
-		cnpj: '',
+		id: 0,
+		user: '',
+		name: '',
 		email: '',
-		telefone: '',
-		logo: undefined
+		phone: '',
+		password: ''
 	})
-	const [image, setImage] = useState<File | null>(null)
-	const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-		if (event.target.files && event.target.files[0]) {
-			setImage(event.target.files[0])
-		}
-	}
 
 	function applyMask(value: string, name: string) {
 		if (TYPES[name] === undefined) return value
@@ -131,18 +105,26 @@ const ModalCadastrar: React.FC<ModalCadastrarProps> = props => {
 
 	const validateData = (): boolean => {
 		let errorsAux: string[] = []
-		if (formData.nome === '') errorsAux.push('O campo nome é obrigatório')
 
-		if (formData.cnpj === '') errorsAux.push('O campo CNPJ é obrigatório')
-		else if (formData.cnpj.length !== 18)
-			errorsAux.push('O campo CNPJ deve ter 18 caracteres')
+		if (formData.user === '')
+			errorsAux.push('O campo usuário é obrigatório')
 
+		if (formData.password === '')
+			errorsAux.push('O campo senha é obrigatório')
+		else if (formData.password.length < 6)
+			errorsAux.push('O campo senha deve ter no mínimo 6 caracteres')
+
+		if (formData.name === '') errorsAux.push('O campo nome é obrigatório')
+
+		const regexEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 		if (formData.email === '')
 			errorsAux.push('O campo e-mail é obrigatório')
+		else if (!regexEmail.test(formData.email))
+			errorsAux.push('O campo e-mail é inválido')
 
-		if (formData.telefone === '')
+		if (formData.phone === '')
 			errorsAux.push('O campo telefone é obrigatório')
-		else if (formData.telefone.length !== 15)
+		else if (formData.phone.length !== 15)
 			errorsAux.push('O campo telefone deve ter 15 caracteres')
 
 		setErrors(errorsAux)
@@ -162,69 +144,27 @@ const ModalCadastrar: React.FC<ModalCadastrarProps> = props => {
 			return
 		}
 
-		const value: Token | null = await localforage.getItem('token')
-
-		if (!value || !value.access_token) {
+		var isLogged = await localforage.getItem('userLogged')
+		if (!isLogged) {
 			window.location.href = '/login'
 			return
 		}
 
-		const formDataFinal = new FormData()
-		if (formData.id_empresa) {
-			formDataFinal.append('id_empresa', formData.id_empresa.toString())
-		}
-		formDataFinal.append('nome', formData.nome)
-		formDataFinal.append('cnpj', formData.cnpj)
-		formDataFinal.append('email', formData.email)
-		formDataFinal.append('telefone', formData.telefone)
-		if (image) {
-			formDataFinal.append('logo', image)
+		const users = (await localforage.getItem<Data[]>('users')) || []
+
+		if (users?.find(user => user.user === formData.user)) {
+			setErrors(['Nome de usuário já cadastrado'])
+			setLoading(false)
+			return
 		}
 
-		await axios
-			.post('http://localhost:8000/api/v1/empresas', formDataFinal, {
-				headers: {
-					'Content-Type': 'multipart/form-data',
-					Accept: 'application/json',
-					'Access-Control-Allow-Origin': '*',
-					Authorization: `Bearer ${value.access_token}`
-				}
-			})
-			.then(response => {
-				setLoading(false)
-				setSuccess(true)
-			})
-			.catch(error => {
-				setLoading(false)
-				const { message, errors } = error.response.data
+		formData.id = (users[users.length - 1]?.id ?? 0) + 1;
+		users?.push(formData)
+		await localforage.setItem('users', users)
 
-				if (errors === undefined) {
-					setErrors([message])
-					return
-				}
-				const erroList = []
-				for (const campo in errors) {
-					if (errors.hasOwnProperty(campo)) {
-						erroList.push(errors[campo][0])
-					}
-				}
-				setErrors(erroList)
-				return
-			})
-
-		setTimeout(() => {
-			setFormData({
-				nome: '',
-				cnpj: '',
-				email: '',
-				telefone: ''
-			})
-			if (onClose) {
-				onClose()
-			}
-			handleClose()
-			setSuccess(false)
-		}, 3000)
+		if (onClose) onClose()
+		handleClose()
+		setSuccess(false)
 	}
 
 	const handleOpen = async () => setOpen(true)
@@ -235,20 +175,19 @@ const ModalCadastrar: React.FC<ModalCadastrarProps> = props => {
 		setSuccess(false)
 		setLoading(false)
 		setFormData({
-			nome: '',
-			cnpj: '',
+			id: 0,
+			user: '',
+			name: '',
 			email: '',
-			telefone: ''
+			phone: '',
+			password: ''
 		})
+		if (onClose) onClose()
 	}
 
 	return (
 		<div>
-			<Button
-				variant="outlined"
-				onClick={handleOpen}
-				startIcon={props.icon}
-			>
+			<Button variant="outlined" onClick={handleOpen}>
 				{props.button}
 			</Button>
 			<Modal
@@ -306,30 +245,31 @@ const ModalCadastrar: React.FC<ModalCadastrarProps> = props => {
 						<Grid container spacing={2}>
 							<Grid item xs={6}>
 								<TextField
-									autoComplete="given-name"
-									name="nome"
+									autoComplete="given-user"
+									name="user"
 									required
 									fullWidth
-									id="nome"
-									label="Nome"
-									value={formData.nome}
+									id="user"
+									label="Usuário"
+									value={formData.user}
 									onChange={handleChange}
 									autoFocus
 								/>
 							</Grid>
-							<Grid item xs={6}>
+							<Grid item xs={12}>
 								<TextField
+									autoComplete="given-name"
+									name="name"
 									required
 									fullWidth
-									name="cnpj"
-									label="CNPJ"
-									type="cnpj"
-									id="cnpj"
-									value={formData.cnpj}
-									onChange={event => handleChange(event, 18)}
+									id="name"
+									label="Nome"
+									value={formData.name}
+									onChange={handleChange}
+									autoFocus
 								/>
 							</Grid>
-							<Grid item xs={6}>
+							<Grid item xs={12}>
 								<TextField
 									required
 									fullWidth
@@ -345,29 +285,25 @@ const ModalCadastrar: React.FC<ModalCadastrarProps> = props => {
 								<TextField
 									required
 									fullWidth
-									name="telefone"
+									name="phone"
 									label="Telefone"
-									type="telefone"
-									id="telefone"
-									value={formData.telefone}
+									type="phone"
+									id="phone"
+									value={formData.phone}
 									onChange={event => handleChange(event, 15)}
 								/>
 							</Grid>
-							<Grid item xs={12}>
-								<Button
-									component="label"
-									variant="contained"
-									startIcon={<CloudUploadIcon />}
-								>
-									Upload Logo
-									<VisuallyHiddenInput
-										type="file"
-										accept="image/*"
-										name="logo"
-										id="logo"
-										onChange={handleImageChange}
-									/>
-								</Button>
+							<Grid item xs={6}>
+								<TextField
+									required
+									fullWidth
+									name="password"
+									label="Senha"
+									type="password"
+									id="password"
+									value={formData.password}
+									onChange={handleChange}
+								/>
 							</Grid>
 						</Grid>
 						<Box sx={{ display: 'flex', gap: 2 }}>

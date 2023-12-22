@@ -1,11 +1,10 @@
 import {
 	Alert,
 	AlertTitle,
-	Avatar,
 	Box,
-	Button,
 	Container,
 	Fade,
+	Grid,
 	Paper,
 	Table,
 	TableBody,
@@ -13,26 +12,25 @@ import {
 	TableContainer,
 	TableHead,
 	TableRow,
+	TextField,
 	Typography,
 	styled
 } from '@mui/material'
 import localforage from 'localforage'
-import axios from 'axios'
 import { useState } from 'react'
 import * as React from 'react'
 import ModalCadastrar from '../ModalCadastrar'
-import CreateOutlinedIcon from '@mui/icons-material/CreateOutlined'
 import DeleteButton from '../DeleteButton'
-import ModalAtualizar from '../ModalAtualizar'
+import ModalPerfil from '../ModalPerfil'
 import Logout from '../Logout'
 
-interface CompanyData {
-	id_empresa: number
-	nome: string
+interface UserData {
+	id: number
+	name: string
+	user: string
 	cnpj: string
 	email: string
-	telefone: string
-	logo: string
+	phone: string
 }
 
 const StyledFade = styled(Fade)({
@@ -40,36 +38,22 @@ const StyledFade = styled(Fade)({
 })
 
 export default function Dashboard() {
-	const [data, setData] = React.useState<CompanyData[]>([])
+	const [data, setData] = React.useState<UserData[]>([])
 	const [success, setSuccess] = useState(false)
+	const [filtro, setFiltro] = useState('')
 
 	const fetchData = React.useCallback(async () => {
 		try {
-			const value: { access_token: string } | null =
-				await localforage.getItem('token')
-
-			if (!value || !value.access_token) {
+			var isLogged = await localforage.getItem('userLogged')
+			if (!isLogged) {
 				window.location.href = '/login'
-				return
 			}
-
-			const response = await axios.get<{ data: CompanyData[] }>(
-				'http://localhost:8000/api/v1/empresas/',
-				{
-					headers: {
-						Accept: 'application/json',
-						Authorization: `Bearer ${value.access_token}`
-					}
-				}
-			)
-
-			setData(response.data.data)
+			const storedData = await localforage.getItem<UserData[]>('users')
+			if (storedData) {
+				setData(storedData)
+			}
 		} catch (error) {
-			if (axios.isAxiosError(error) && error.response?.status === 401) {
-				window.location.href = '/login'
-			} else {
-				console.error('Erro ao buscar empresas:', error)
-			}
+			console.error('Error fetching data from local storage:', error)
 		}
 	}, [setData])
 
@@ -88,6 +72,14 @@ export default function Dashboard() {
 			setSuccess(false)
 		}, 3000)
 	}, [fetchData, setSuccess])
+
+	const handleFilter = (event: React.ChangeEvent<HTMLInputElement>) => {
+		setFiltro(event.target.value)
+	}
+
+	const filteredData = data.filter((row: UserData) => {
+		return row.name.toLowerCase().includes(filtro.toLowerCase())
+	})
 
 	return (
 		<Container component="main" sx={{ bgcolor: 'background.default' }}>
@@ -119,27 +111,36 @@ export default function Dashboard() {
 					</StyledFade>
 					<Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
 						<Logout />
-						<Button variant="outlined" onClick={handleUpdate}>
-							Atualizar
-						</Button>
+						<ModalPerfil button="Perfil" onClose={handleUpdate} />
 						<ModalCadastrar
 							button="Cadastrar"
 							onClose={handleUpdate}
 						/>
 					</Box>
 				</Box>
+				<Grid container spacing={2}>
+					<Grid item xs={6}>
+						<TextField
+							sx={{
+								mt: 2
+							}}
+							fullWidth
+							label="Filtro por nome"
+							value={filtro}
+							onChange={handleFilter}
+							autoFocus
+						/>
+					</Grid>
+				</Grid>
 				<TableContainer component={Paper} sx={{ mt: 3 }}>
 					<Table stickyHeader>
 						<TableHead>
 							<TableRow>
 								<TableCell sx={{ fontWeight: 700 }}>
-									Logo
+									Usuário
 								</TableCell>
 								<TableCell sx={{ fontWeight: 700 }}>
 									Nome
-								</TableCell>
-								<TableCell sx={{ fontWeight: 700 }}>
-									CNPJ
 								</TableCell>
 								<TableCell sx={{ fontWeight: 700 }}>
 									Email
@@ -151,26 +152,17 @@ export default function Dashboard() {
 							</TableRow>
 						</TableHead>
 						<TableBody>
-							{data.map(row => (
-								<TableRow key={row.id_empresa}>
-									<TableCell component="th" scope="row">
-										<Avatar alt={row.nome} src={row.logo} />
-									</TableCell>
-									<TableCell>{row.nome}</TableCell>
-									<TableCell>{row.cnpj}</TableCell>
+							{filteredData.map(row => (
+								<TableRow key={row.id}>
+									<TableCell>{row.user}</TableCell>
+									<TableCell>{row.name}</TableCell>
 									<TableCell>{row.email}</TableCell>
-									<TableCell>{row.telefone}</TableCell>
+									<TableCell>{row.phone}</TableCell>
 									<TableCell
 										align="right"
-										sx={{ width: 300 }}
+										sx={{ width: 150 }}
 									>
 										<Box sx={{ display: 'flex', gap: 2 }}>
-											<ModalAtualizar
-												onClose={handleUpdate}
-												button="Editar"
-												data={row}
-												icon={<CreateOutlinedIcon />}
-											/>
 											<DeleteButton
 												row={row}
 												func={handleDeletion}
